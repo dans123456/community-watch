@@ -64,7 +64,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: MotionBottomNavBar(
         index: _index,
-        onChanged: (i) => setState(() => _index = i),
+        onChanged: (i) {
+          setState(() => _index = i);
+          _load();
+        },
         items: [
           const NavItemData(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'Home'),
           const NavItemData(icon: Icons.list_alt_outlined, activeIcon: Icons.list_alt, label: 'Reports'),
@@ -158,7 +161,7 @@ class _DashboardTab extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFB71C1C).withOpacity(0.35),
+                    color: const Color(0xFFB71C1C).withValues(alpha: 0.35),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -170,7 +173,7 @@ class _DashboardTab extends StatelessWidget {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.emergency_outlined, color: Colors.white, size: 28),
@@ -262,32 +265,32 @@ class _DashboardTab extends StatelessWidget {
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               ),
               const SizedBox(height: 16),
-              _EmergencyItem(
+              const _EmergencyItem(
                 icon: Icons.local_police_outlined,
                 title: 'Police Emergency',
                 number: '911',
-                color: const Color(0xFF1565C0),
+                color: Color(0xFF1565C0),
               ),
               const SizedBox(height: 8),
-              _EmergencyItem(
+              const _EmergencyItem(
                 icon: Icons.medical_services_outlined,
                 title: 'Ambulance & Paramedics',
                 number: '911',
-                color: const Color(0xFF2E7D32),
+                color: Color(0xFF2E7D32),
               ),
               const SizedBox(height: 8),
-              _EmergencyItem(
+              const _EmergencyItem(
                 icon: Icons.local_fire_department_outlined,
                 title: 'Fire & Rescue Service',
                 number: '911',
-                color: const Color(0xFFE65100),
+                color: Color(0xFFE65100),
               ),
               const SizedBox(height: 8),
-              _EmergencyItem(
+              const _EmergencyItem(
                 icon: Icons.shield_outlined,
                 title: 'Community Patrol Hotline',
                 number: '112',
-                color: const Color(0xFF6A1B9A),
+                color: Color(0xFF6A1B9A),
               ),
               const SizedBox(height: 12),
             ],
@@ -330,7 +333,7 @@ class _EmergencyItem extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -348,7 +351,7 @@ class _EmergencyItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(

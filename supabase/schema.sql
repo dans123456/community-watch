@@ -50,6 +50,7 @@ drop policy if exists "reports_insert_own" on reports;
 drop policy if exists "reports_update_own" on reports;
 drop policy if exists "reports_update_policy" on reports;
 drop policy if exists "reports_delete_own" on reports;
+drop policy if exists "reports_delete_policy" on reports;
 drop policy if exists "notifications_own" on notifications;
 drop policy if exists "Allow authenticated uploads to report-images" on storage.objects;
 drop policy if exists "Allow public read of report-images" on storage.objects;
@@ -79,8 +80,14 @@ using (
   )
 );
 
-create policy "reports_delete_own" on reports for delete
-using (auth.uid() = user_id);
+create policy "reports_delete_policy" on reports for delete
+using (
+  auth.uid() = user_id
+  or exists (
+    select 1 from profiles
+    where profiles.id = auth.uid() and profiles.role = 'admin'
+  )
+);
 
 create policy "notifications_own" on notifications for all
 using (auth.uid() = user_id)
@@ -126,3 +133,23 @@ with check (auth.uid() = user_id);
 -- IMPORTANT: after creating your first account, promote that user's profile
 -- to admin from the Supabase SQL editor:
 -- update profiles set role = 'admin' where id = 'YOUR-USER-UUID';
+
+-- Trigger to automatically create a profile when a new user signs up in auth.users
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, full_name, role)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(coalesce(new.email, 'resident'), '@', 1)),
+    'user'
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();

@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:intl/intl.dart';
 import '../../services/report_service.dart';
 import '../../widgets/motion.dart';
 
@@ -90,7 +91,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       }
 
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
 
       setState(() {
@@ -128,9 +129,100 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
     }
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final x = await ImagePicker().pickImage(source: source, imageQuality: 85);
+      if (x != null && mounted) setState(() => image = File(x.path));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(behavior: SnackBarBehavior.floating, content: Text('Error selecting image: $e')),
+        );
+      }
+    }
+  }
+
+  void _showImageOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Take Photo (Camera)'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Choose from Gallery'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              if (image != null)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text('Remove Photo', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() => image = null);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickDateTime() async {
+    final d = await showDatePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDate: incident,
+    );
+    if (d != null && mounted) {
+      final t = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(incident),
+      );
+      if (mounted) {
+        setState(() {
+          incident = DateTime(
+            d.year,
+            d.month,
+            d.day,
+            t?.hour ?? incident.hour,
+            t?.minute ?? incident.minute,
+          );
+        });
+      }
+    }
+  }
+
   Future<void> submit() async {
     if (title.text.trim().isEmpty || desc.text.trim().isEmpty || location.text.trim().isEmpty) {
       _shake.shake();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('Please provide an incident title, description, and location.'),
+          ),
+        );
+      }
       return;
     }
     setState(() => loading = true);
@@ -178,11 +270,12 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: category,
+            initialValue: category,
             items: categories.map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(),
             onChanged: (x) => setState(() => category = x!),
             decoration: const InputDecoration(labelText: 'Category'),
           ),
+          const SizedBox(height: 12),
           TextField(
             controller: location,
             decoration: InputDecoration(
@@ -255,7 +348,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.65),
+                          color: Colors.black.withValues(alpha: 0.65),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text(
@@ -272,21 +365,15 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           const SizedBox(height: 12),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('Incident time: ${incident.toLocal()}'),
+            title: const Text('Incident time', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            subtitle: Text(
+              DateFormat('EEE, MMM d, yyyy • h:mm a').format(incident.toLocal()),
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+            ),
             trailing: MotionIconButton(
               icon: Icons.calendar_month,
-              tooltip: 'Pick date',
-              onPressed: () async {
-                final d = await showDatePicker(
-                  context: context,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                  initialDate: incident,
-                );
-                if (d != null) {
-                  setState(() => incident = DateTime(d.year, d.month, d.day, incident.hour, incident.minute));
-                }
-              },
+              tooltip: 'Change date and time',
+              onPressed: _pickDateTime,
             ),
           ),
           AnimatedSwitcher(
@@ -299,21 +386,36 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                 ? Padding(
                     key: ValueKey(image!.path),
                     padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.file(image!, height: 180, fit: BoxFit.cover, width: double.infinity),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.file(image!, height: 180, fit: BoxFit.cover, width: double.infinity),
+                        ),
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: CircleAvatar(
+                            backgroundColor: Colors.black.withValues(alpha: 0.6),
+                            radius: 16,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white, size: 16),
+                              padding: EdgeInsets.zero,
+                              tooltip: 'Remove photo',
+                              onPressed: () => setState(() => image = null),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   )
                 : const SizedBox.shrink(),
           ),
           MotionButton(
-            label: 'Add evidence image',
-            icon: Icons.image_outlined,
+            label: image != null ? 'Change photo evidence' : 'Add photo evidence',
+            icon: image != null ? Icons.photo_library : Icons.camera_alt_outlined,
             variant: MotionButtonVariant.outlined,
-            onPressed: () async {
-              final x = await ImagePicker().pickImage(source: ImageSource.gallery);
-              if (x != null) setState(() => image = File(x.path));
-            },
+            onPressed: _showImageOptions,
           ),
           const SizedBox(height: 18),
           Shake(

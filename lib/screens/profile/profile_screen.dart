@@ -53,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     CircleAvatar(
                       radius: 26,
-                      backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                       child: Icon(Icons.person, color: Theme.of(context).colorScheme.primary),
                     ),
                     const SizedBox(width: 14),

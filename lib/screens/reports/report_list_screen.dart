@@ -192,7 +192,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
                     child: ChoiceChip(
                       label: Text(st),
                       selected: _selectedStatus == st,
-                      selectedColor: st != 'All' ? statusColor(st).withOpacity(0.2) : null,
+                      selectedColor: st != 'All' ? statusColor(st).withValues(alpha: 0.2) : null,
                       onSelected: (_) => setState(() => _selectedStatus = st),
                       visualDensity: VisualDensity.compact,
                       labelStyle: TextStyle(
@@ -231,10 +231,13 @@ class _ReportListScreenState extends State<ReportListScreen> {
                       child: FadeSlideIn(
                         index: i,
                         child: MotionCard(
-                          onTap: () => pushAnimated(
-                            context,
-                            ReportDetailScreen(report: r),
-                          ).then((_) => load()),
+                          onTap: () async {
+                            final res = await pushAnimated(
+                              context,
+                              ReportDetailScreen(report: r),
+                            );
+                            if (res == true || mounted) load();
+                          },
                           child: Padding(
                             padding: const EdgeInsets.all(14),
                             child: Row(
@@ -243,7 +246,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
                                   width: 46,
                                   height: 46,
                                   decoration: BoxDecoration(
-                                    color: statusColor(r.status).withOpacity(0.12),
+                                    color: statusColor(r.status).withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(13),
                                   ),
                                   child: Icon(
@@ -339,7 +342,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: color.withOpacity(0.5),
+                            color: color.withValues(alpha: 0.5),
                             blurRadius: isSelected ? 12 : 6,
                             spreadRadius: isSelected ? 3 : 1,
                           ),
@@ -368,7 +371,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
+                color: Colors.white.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
               ),
@@ -406,7 +409,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: statusColor(_selectedReport!.status).withOpacity(0.12),
+                              color: statusColor(_selectedReport!.status).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(
@@ -450,11 +453,16 @@ class _ReportListScreenState extends State<ReportListScreen> {
                           TextButton.icon(
                             icon: const Icon(Icons.arrow_forward, size: 18),
                             label: const Text('View Details'),
-                            onPressed: () {
-                              pushAnimated(
+                            onPressed: () async {
+                              final sel = _selectedReport!;
+                              final res = await pushAnimated(
                                 context,
-                                ReportDetailScreen(report: _selectedReport!),
-                              ).then((_) => load());
+                                ReportDetailScreen(report: sel),
+                              );
+                              if (mounted) {
+                                if (res == true) setState(() => _selectedReport = null);
+                                load();
+                              }
                             },
                           ),
                         ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/report.dart';
 import '../../services/report_service.dart';
 import '../../widgets/motion.dart';
+import '../reports/report_detail_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -65,6 +66,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
             const SizedBox(height: 10),
             if (loading)
               ...List.generate(4, (_) => const ReportCardSkeleton())
+            else if (reports.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.inbox_outlined, size: 48, color: Colors.grey.shade400),
+                      const SizedBox(height: 8),
+                      Text('No reports submitted yet.', style: TextStyle(color: Colors.grey.shade600)),
+                    ],
+                  ),
+                ),
+              )
             else
               ...reports.take(20).toList().asMap().entries.map((entry) {
                 final i = entry.key;
@@ -74,6 +92,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   child: FadeSlideIn(
                     index: i,
                     child: MotionCard(
+                      onTap: () => pushAnimated(context, ReportDetailScreen(report: r)).then((_) => load()),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                         child: Row(
@@ -98,9 +117,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                   .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                                   .toList(),
                               onChanged: (s) async {
-                                if (s == null) return;
-                                await service.updateReport(r.id, {'status': s});
-                                await load();
+                                if (s == null || s == r.status) return;
+                                final messenger = ScaffoldMessenger.of(context);
+                                try {
+                                  await service.updateReport(r.id, {'status': s});
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      behavior: SnackBarBehavior.floating,
+                                      content: Text('Status updated to "$s"'),
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                  await load();
+                                } catch (e) {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      behavior: SnackBarBehavior.floating,
+                                      content: Text('Failed to update status: $e'),
+                                    ),
+                                  );
+                                }
                               },
                             ),
                           ],
@@ -137,24 +173,32 @@ class _Stat extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
                 child: Icon(icon, size: 20, color: color),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TweenAnimationBuilder<int>(
-                    tween: IntTween(begin: 0, end: value),
-                    duration: Motion.slow,
-                    curve: Motion.curve,
-                    builder: (context, v, _) => Text(
-                      '$v',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TweenAnimationBuilder<int>(
+                      tween: IntTween(begin: 0, end: value),
+                      duration: Motion.slow,
+                      curve: Motion.curve,
+                      builder: (context, v, _) => Text(
+                        '$v',
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
                     ),
-                  ),
-                  Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                ],
+                    Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

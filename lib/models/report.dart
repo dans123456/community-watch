@@ -34,11 +34,11 @@ class Report {
     description: map['description'] ?? '',
     category: map['category'] ?? '',
     location: map['location'] ?? '',
-    incidentAt: DateTime.parse(map['incident_at'].toString()),
+    incidentAt: DateTime.tryParse(map['incident_at']?.toString() ?? '') ?? DateTime.now(),
     status: map['status'] ?? 'Pending',
     imageUrl: map['image_url'],
     latitude: map['latitude'] != null ? (map['latitude'] as num).toDouble() : null,
     longitude: map['longitude'] != null ? (map['longitude'] as num).toDouble() : null,
-    createdAt: DateTime.parse(map['created_at'].toString()),
+    createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
   );
 }

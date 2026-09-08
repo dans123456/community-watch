@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/report.dart';
 import '../../models/report_comment.dart';
+import '../../services/auth_service.dart';
 import '../../services/report_service.dart';
 import '../../widgets/motion.dart';
 
@@ -21,11 +23,15 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   List<ReportComment> _comments = [];
   bool _loadingComments = true;
   bool _submittingComment = false;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _loadComments();
+    AuthService().isAdmin().then((a) {
+      if (mounted) setState(() => _isAdmin = a);
+    });
   }
 
   Future<void> _loadComments() async {
@@ -50,6 +56,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     try {
       await _reportService.addComment(widget.report.id, text);
       _commentController.clear();
+      if (!mounted) return;
       FocusScope.of(context).unfocus();
       await _loadComments();
     } catch (e) {
@@ -73,7 +80,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     );
     if (!confirmed) return;
     await _reportService.deleteReport(widget.report.id);
-    if (context.mounted) Navigator.pop(context);
+    if (context.mounted) Navigator.pop(context, true);
   }
 
   @override
@@ -113,19 +120,47 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
             index: 3,
             child: MotionCard(
               child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
+                padding: const EdgeInsets.all(14),
+                child: Column(
                   children: [
-                    const MapMarkerPulse(size: 44),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(report.location, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          Text('Incident location', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                        ],
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule, size: 22, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Incident: ${DateFormat('EEE, MMM d, yyyy • h:mm a').format(report.incidentAt.toLocal())}',
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Reported: ${DateFormat('MMM d, yyyy • h:mm a').format(report.createdAt.toLocal())}',
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 20),
+                    Row(
+                      children: [
+                        const MapMarkerPulse(size: 36),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(report.location, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              const SizedBox(height: 2),
+                              Text('Incident location', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -257,7 +292,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                               radius: 14,
                               backgroundColor: c.isOfficial
                                   ? const Color(0xFF1565C0)
-                                  : Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                               child: Text(
                                 c.userName.isNotEmpty ? c.userName[0].toUpperCase() : 'U',
                                 style: TextStyle(
@@ -304,18 +339,30 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               );
             }),
 
-          const SizedBox(height: 20),
-          if (report.status == 'Pending')
-            FadeSlideIn(
-              index: 6,
-              child: MotionButton(
-                label: 'Delete Report',
-                icon: Icons.delete_outline,
-                variant: MotionButtonVariant.tonal,
-                color: const Color(0xFFC62828),
-                onPressed: () => _delete(context),
-              ),
-            ),
+          Builder(
+            builder: (context) {
+              final currentUid = Supabase.instance.client.auth.currentUser?.id;
+              final canDelete = (report.userId == currentUid || _isAdmin);
+              if (canDelete && (report.status == 'Pending' || _isAdmin)) {
+                return Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    FadeSlideIn(
+                      index: 6,
+                      child: MotionButton(
+                        label: 'Delete Report',
+                        icon: Icons.delete_outline,
+                        variant: MotionButtonVariant.tonal,
+                        color: const Color(0xFFC62828),
+                        onPressed: () => _delete(context),
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
     );

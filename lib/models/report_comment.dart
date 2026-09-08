@@ -24,6 +24,6 @@ class ReportComment {
     userName: map['user_name'] ?? 'Anonymous',
     comment: map['comment'] ?? '',
     isOfficial: map['is_official'] == true,
-    createdAt: DateTime.parse(map['created_at'].toString()),
+    createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
   );
 }

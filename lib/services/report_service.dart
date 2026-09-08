@@ -8,23 +8,30 @@ class ReportService {
 
   Future<List<Report>> getReports({String? search}) async {
     final base = _client.from('reports').select();
-    final data = search != null && search.trim().isNotEmpty
+    final cleanSearch = search != null
+        ? search.trim().replaceAll(RegExp(r'[,()]'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim()
+        : '';
+    final data = cleanSearch.isNotEmpty
         ? await base.or(
-            'title.ilike.%${search.trim()}%,location.ilike.%${search.trim()}%',
+            'title.ilike.%$cleanSearch%,location.ilike.%$cleanSearch%',
           ).order('created_at', ascending: false)
         : await base.order('created_at', ascending: false);
     return (data as List).map((e) => Report.fromMap(e)).toList();
   }
 
   Future<List<Report>> getMyReports() async {
-    final uid = _client.auth.currentUser!.id;
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return [];
     final data = await _client.from('reports').select().eq('user_id', uid).order('created_at', ascending: false);
     return (data as List).map((e) => Report.fromMap(e)).toList();
   }
 
   Future<String?> uploadImage(File file) async {
-    final uid = _client.auth.currentUser!.id;
-    final path = '$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return null;
+    final ext = file.path.split('.').last.toLowerCase();
+    final safeExt = ['png', 'jpg', 'jpeg', 'webp'].contains(ext) ? ext : 'jpg';
+    final path = '$uid/${DateTime.now().millisecondsSinceEpoch}_${file.path.hashCode.abs()}.$safeExt';
     await _client.storage.from('report-images').upload(path, file);
     return _client.storage.from('report-images').getPublicUrl(path);
   }

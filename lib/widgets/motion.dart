@@ -164,7 +164,7 @@ class _MotionCardState extends State<MotionCard> {
             borderRadius: widget.borderRadius,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(_hovering ? 0.13 : 0.05),
+                color: Colors.black.withValues(alpha: _hovering ? 0.13 : 0.05),
                 blurRadius: 4 + elevation * 3,
                 offset: Offset(0, elevation),
               ),
@@ -178,8 +178,8 @@ class _MotionCardState extends State<MotionCard> {
               borderRadius: widget.borderRadius,
               onTap: widget.onTap,
               onHighlightChanged: (v) => setState(() => _pressed = v),
-              splashColor: theme.colorScheme.primary.withOpacity(0.08),
-              highlightColor: theme.colorScheme.primary.withOpacity(0.04),
+              splashColor: theme.colorScheme.primary.withValues(alpha: 0.08),
+              highlightColor: theme.colorScheme.primary.withValues(alpha: 0.04),
               child: widget.child,
             ),
           ),
@@ -237,13 +237,13 @@ class _MotionButtonState extends State<MotionButton> {
     switch (widget.variant) {
       case MotionButtonVariant.filled:
         bg = !enabled
-            ? base.withOpacity(0.35)
+            ? base.withValues(alpha: 0.35)
             : (_hovering ? Color.lerp(base, Colors.black, 0.08)! : base);
         fg = theme.colorScheme.onPrimary;
         if (enabled && _hovering) {
           shadow = [
             BoxShadow(
-              color: base.withOpacity(0.32),
+              color: base.withValues(alpha: 0.32),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -252,17 +252,17 @@ class _MotionButtonState extends State<MotionButton> {
         break;
       case MotionButtonVariant.tonal:
         bg = !enabled
-            ? base.withOpacity(0.06)
-            : (_hovering ? base.withOpacity(0.22) : base.withOpacity(0.12));
+            ? base.withValues(alpha: 0.06)
+            : (_hovering ? base.withValues(alpha: 0.22) : base.withValues(alpha: 0.12));
         fg = base;
         break;
       case MotionButtonVariant.outlined:
-        bg = _hovering && enabled ? base.withOpacity(0.06) : Colors.transparent;
+        bg = _hovering && enabled ? base.withValues(alpha: 0.06) : Colors.transparent;
         fg = base;
-        border = Border.all(color: base.withOpacity(enabled ? 0.55 : 0.25));
+        border = Border.all(color: base.withValues(alpha: enabled ? 0.55 : 0.25));
         break;
       case MotionButtonVariant.text:
-        bg = _hovering && enabled ? base.withOpacity(0.06) : Colors.transparent;
+        bg = _hovering && enabled ? base.withValues(alpha: 0.06) : Colors.transparent;
         fg = base;
         break;
     }
@@ -318,8 +318,8 @@ class _MotionButtonState extends State<MotionButton> {
             child: InkWell(
               onTap: enabled ? widget.onPressed : null,
               onHighlightChanged: (v) => setState(() => _pressed = v),
-              splashColor: fg.withOpacity(0.12),
-              highlightColor: fg.withOpacity(0.06),
+              splashColor: fg.withValues(alpha: 0.12),
+              highlightColor: fg.withValues(alpha: 0.06),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                 child: Center(child: content),
@@ -369,7 +369,7 @@ class _MotionIconButtonState extends State<MotionIconButton> {
         curve: Motion.curve,
         child: Material(
           color: _hovering
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.08)
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.08)
               : Colors.transparent,
           shape: const CircleBorder(),
           child: InkWell(
@@ -524,18 +524,18 @@ class ReportCardSkeleton extends StatelessWidget {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const Skeleton(
+          Skeleton(
             height: 44,
             width: 44,
             borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Skeleton(height: 14, width: 150),
                 SizedBox(height: 8),
                 Skeleton(height: 12, width: 100),
@@ -560,18 +560,18 @@ class StatCardSkeleton extends StatelessWidget {
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const Skeleton(
+          Skeleton(
             height: 40,
             width: 40,
             borderRadius: BorderRadius.all(Radius.circular(10)),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 Skeleton(height: 18, width: 40),
                 SizedBox(height: 6),
                 Skeleton(height: 12, width: 60),
@@ -619,9 +619,9 @@ class StatusChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: c.withOpacity(0.12),
+          color: c.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: c.withOpacity(0.3)),
+          border: Border.all(color: c.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -704,7 +704,7 @@ class _MapMarkerPulseState extends State<MapMarkerPulse>
                   color: widget.color,
                   boxShadow: [
                     BoxShadow(
-                      color: widget.color.withOpacity(0.35),
+                      color: widget.color.withValues(alpha: 0.35),
                       blurRadius: 8,
                     ),
                   ],
@@ -848,7 +848,7 @@ Widget _dialogShell(BuildContext context, Animation<double> animation, Widget ch
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.18),
+                  color: Colors.black.withValues(alpha: 0.18),
                   blurRadius: 26,
                   offset: const Offset(0, 10),
                 ),
@@ -891,7 +891,7 @@ class _SuccessCheckState extends State<_SuccessCheck>
           width: 64,
           height: 64,
           decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.12),
+            color: Colors.green.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Transform.scale(
@@ -915,7 +915,7 @@ Future<void> showSuccessOverlay(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Success',
-    barrierColor: Colors.black.withOpacity(0.35),
+    barrierColor: Colors.black.withValues(alpha: 0.35),
     transitionDuration: Motion.normal,
     pageBuilder: (context, animation, secondaryAnimation) => const SizedBox.shrink(),
     transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -956,7 +956,7 @@ Future<bool> showMotionConfirm(
     context: context,
     barrierDismissible: true,
     barrierLabel: title,
-    barrierColor: Colors.black.withOpacity(0.35),
+    barrierColor: Colors.black.withValues(alpha: 0.35),
     transitionDuration: Motion.normal,
     pageBuilder: (context, animation, secondaryAnimation) => const SizedBox.shrink(),
     transitionBuilder: (context, animation, secondaryAnimation, child) {
@@ -1036,7 +1036,7 @@ class MotionBottomNavBar extends StatelessWidget {
         color: theme.cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 14,
             offset: const Offset(0, -3),
           ),
@@ -1122,7 +1122,7 @@ class _NavTapAreaState extends State<_NavTapArea> {
         child: AnimatedContainer(
           duration: Motion.fast,
           color: _hovering
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.04)
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.04)
               : Colors.transparent,
           child: widget.child,
         ),

@@ -10,11 +10,15 @@ class AuthService {
       data: {'full_name': name},
     );
     if (result.user != null) {
-      await client.from('profiles').upsert({
-        'id': result.user!.id,
-        'full_name': name,
-        'role': 'user',
-      });
+      try {
+        await client.from('profiles').upsert({
+          'id': result.user!.id,
+          'full_name': name,
+          'role': 'user',
+        });
+      } catch (_) {
+        // Handled by database trigger if email confirmation is required
+      }
     }
   }
 
@@ -29,9 +33,13 @@ class AuthService {
   Future<void> signOut() => client.auth.signOut();
 
   Future<bool> isAdmin() async {
-    final user = client.auth.currentUser;
-    if (user == null) return false;
-    final row = await client.from('profiles').select('role').eq('id', user.id).maybeSingle();
-    return row?['role'] == 'admin';
+    try {
+      final user = client.auth.currentUser;
+      if (user == null) return false;
+      final row = await client.from('profiles').select('role').eq('id', user.id).maybeSingle();
+      return row?['role'] == 'admin';
+    } catch (_) {
+      return false;
+    }
   }
 }
