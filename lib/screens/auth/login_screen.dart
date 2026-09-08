@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
+import '../../services/biometric_service.dart';
 import '../../widgets/motion.dart';
 import '../home/home_screen.dart';
 import 'register_screen.dart';
@@ -16,7 +18,53 @@ class _LoginScreenState extends State<LoginScreen> {
   final email = TextEditingController();
   final password = TextEditingController();
   final _shake = ShakeController();
+  final _biometricService = BiometricService();
+
   bool loading = false;
+  bool _obscurePassword = true;
+  bool _rememberMe = false;
+  bool _canUseBiometrics = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPreferencesAndBiometrics();
+  }
+
+  Future<void> _initPreferencesAndBiometrics() async {
+    final remember = await _biometricService.getRememberMe();
+    final savedEmail = await _biometricService.getSavedEmail();
+    final canBio = await _biometricService.isBiometricsAvailable();
+
+    if (mounted) {
+      setState(() {
+        _rememberMe = remember;
+        if (savedEmail != null && savedEmail.isNotEmpty) {
+          email.text = savedEmail;
+        }
+        _canUseBiometrics = canBio;
+      });
+    }
+  }
+
+  Future<void> _loginWithBiometrics() async {
+    final authenticated = await _biometricService.authenticate();
+    if (!authenticated) return;
+
+    final currentSession = Supabase.instance.client.auth.currentSession;
+    if (currentSession != null) {
+      if (mounted) pushAndClearAnimated(context, const HomeScreen());
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('Biometrics verified. Please enter your password to sign in.'),
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> login() async {
     if (email.text.trim().isEmpty || password.text.isEmpty) {
@@ -26,6 +74,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => loading = true);
     try {
       await AuthService().signIn(email.text.trim(), password.text);
+      await _biometricService.saveRememberMe(
+        email: email.text.trim(),
+        remember: _rememberMe,
+      );
       if (mounted) pushAndClearAnimated(context, const HomeScreen());
     } catch (e) {
       _shake.shake();
@@ -51,51 +103,91 @@ class _LoginScreenState extends State<LoginScreen> {
               child: FadeSlideIn(
                 child: Shake(
                   controller: _shake,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Icon(Icons.shield_outlined, size: 70, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Community Watch',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Report, monitor and stay informed about your community.',
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 32),
-                      TextField(
-                        controller: email,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined)),
-                      ),
-                      const SizedBox(height: 14),
-                      TextField(
-                        controller: password,
-                        obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Password', prefixIcon: Icon(Icons.lock_outline)),
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: MotionButton(
-                          label: 'Forgot password?',
-                          variant: MotionButtonVariant.text,
-                          expand: false,
-                          onPressed: () => pushAnimated(context, const ForgotPasswordScreen()),
+                  child: AutofillGroup(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Icon(Icons.shield_outlined, size: 70, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Community Watch',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      MotionButton(label: 'Login', loading: loading, onPressed: loading ? null : login),
-                      const SizedBox(height: 12),
-                      MotionButton(
-                        label: 'Create account',
-                        variant: MotionButtonVariant.outlined,
-                        onPressed: () => pushAnimated(context, const RegisterScreen()),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Report, monitor and stay informed about your community.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        TextField(
+                          controller: email,
+                          keyboardType: TextInputType.emailAddress,
+                          autofillHints: const [AutofillHints.email, AutofillHints.username],
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: password,
+                          obscureText: _obscurePassword,
+                          autofillHints: const [AutofillHints.password],
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                color: Colors.grey.shade600,
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _rememberMe,
+                              onChanged: (val) => setState(() => _rememberMe = val ?? false),
+                              activeColor: Theme.of(context).colorScheme.primary,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            GestureDetector(
+                              onTap: () => setState(() => _rememberMe = !_rememberMe),
+                              child: const Text('Remember me', style: TextStyle(fontSize: 13)),
+                            ),
+                            const Spacer(),
+                            MotionButton(
+                              label: 'Forgot password?',
+                              variant: MotionButtonVariant.text,
+                              expand: false,
+                              onPressed: () => pushAnimated(context, const ForgotPasswordScreen()),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        MotionButton(label: 'Login', loading: loading, onPressed: loading ? null : login),
+                        if (_canUseBiometrics) ...[
+                          const SizedBox(height: 12),
+                          MotionButton(
+                            label: 'Sign in with Biometrics',
+                            icon: Icons.fingerprint,
+                            variant: MotionButtonVariant.tonal,
+                            onPressed: _loginWithBiometrics,
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        MotionButton(
+                          label: 'Create account',
+                          variant: MotionButtonVariant.outlined,
+                          onPressed: () => pushAnimated(context, const RegisterScreen()),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

@@ -32,6 +32,8 @@
 	<string>Community Watch needs camera access to let you capture incident photo evidence directly.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Community Watch needs photo library access to let you attach incident photos from your library.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Community Watch uses biometric authentication to let you quickly sign in securely.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tel</string>
