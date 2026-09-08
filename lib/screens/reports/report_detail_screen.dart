@@ -7,6 +7,7 @@ import '../../models/report.dart';
 import '../../models/report_comment.dart';
 import '../../services/auth_service.dart';
 import '../../services/report_service.dart';
+import '../../services/pdf_export_service.dart';
 import '../../widgets/motion.dart';
 
 class ReportDetailScreen extends StatefulWidget {
@@ -24,6 +25,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   bool _loadingComments = true;
   bool _submittingComment = false;
   bool _isAdmin = false;
+  bool _exportingPdf = false;
+  int _activeImageIndex = 0;
 
   @override
   void initState() {
@@ -83,12 +86,101 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     if (context.mounted) Navigator.pop(context, true);
   }
 
+  Future<void> _exportPdf() async {
+    if (_exportingPdf) return;
+    setState(() => _exportingPdf = true);
+    try {
+      await PdfExportService.exportReportDossier(
+        widget.report,
+        comments: _comments,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('Failed to export PDF dossier: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exportingPdf = false);
+    }
+  }
+
+  void _openImageLightbox(BuildContext context, List<String> urls, int initialIndex) {
+    showDialog(
+      context: context,
+      useSafeArea: false,
+      builder: (ctx) {
+        final pageController = PageController(initialPage: initialIndex);
+        int currentIndex = initialIndex;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Scaffold(
+              backgroundColor: Colors.black.withValues(alpha: 0.95),
+              appBar: AppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                iconTheme: const IconThemeData(color: Colors.white),
+                title: Text(
+                  urls.length > 1 ? '${currentIndex + 1} of ${urls.length}' : 'Evidence Photo',
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                centerTitle: true,
+              ),
+              body: PageView.builder(
+                controller: pageController,
+                itemCount: urls.length,
+                onPageChanged: (i) => setDialogState(() => currentIndex = i),
+                itemBuilder: (context, i) {
+                  return Center(
+                    child: InteractiveViewer(
+                      minScale: 0.8,
+                      maxScale: 4.0,
+                      child: Image.network(
+                        urls[i],
+                        fit: BoxFit.contain,
+                        loadingBuilder: (ctx, child, progress) {
+                          if (progress == null) return child;
+                          return const Center(
+                            child: CircularProgressIndicator(color: Colors.white),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final report = widget.report;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Report Details')),
+      appBar: AppBar(
+        title: const Text('Report Details'),
+        actions: [
+          IconButton(
+            icon: _exportingPdf
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Export Dossier (PDF)',
+            onPressed: _exportingPdf ? null : _exportPdf,
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [
@@ -208,20 +300,197 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
               ),
             ),
           ],
-          if (report.imageUrl != null)
+          if (report.imageUrls.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: FadeSlideIn(
                 index: 5,
-                child: Hero(
-                  tag: 'report-image-${report.id}',
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.network(report.imageUrl!, height: 220, fit: BoxFit.cover),
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Photo Evidence (${report.imageUrls.length})',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        Text(
+                          'Tap photo to zoom',
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (report.imageUrls.length == 1)
+                      GestureDetector(
+                        onTap: () => _openImageLightbox(context, report.imageUrls, 0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Stack(
+                            children: [
+                              Image.network(
+                                report.imageUrls.first,
+                                height: 220,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                              Positioned(
+                                bottom: 8,
+                                right: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.zoom_in, color: Colors.white, size: 14),
+                                      SizedBox(width: 4),
+                                      Text('Expand', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: SizedBox(
+                              height: 230,
+                              child: Stack(
+                                children: [
+                                  PageView.builder(
+                                    itemCount: report.imageUrls.length,
+                                    onPageChanged: (i) => setState(() => _activeImageIndex = i),
+                                    itemBuilder: (context, idx) {
+                                      final url = report.imageUrls[idx];
+                                      return GestureDetector(
+                                        onTap: () => _openImageLightbox(context, report.imageUrls, idx),
+                                        child: Image.network(url, fit: BoxFit.cover, width: double.infinity),
+                                      );
+                                    },
+                                  ),
+                                  Positioned(
+                                    top: 10,
+                                    right: 10,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.65),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Text(
+                                        '${_activeImageIndex + 1} / ${report.imageUrls.length}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 8,
+                                    right: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.6),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.zoom_in, color: Colors.white, size: 14),
+                                          SizedBox(width: 4),
+                                          Text('Tap to zoom', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(report.imageUrls.length, (i) {
+                              final isActive = _activeImageIndex == i;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                width: isActive ? 18 : 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: isActive ? const Color(0xFF123B5D) : Colors.grey.shade400,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
               ),
             ),
+
+          // Incident Dossier Export Card
+          const SizedBox(height: 6),
+          FadeSlideIn(
+            index: 5,
+            child: MotionCard(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF123B5D).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.picture_as_pdf, color: Color(0xFF123B5D), size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Official Incident Dossier', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          SizedBox(height: 2),
+                          Text('Export formal case report with GPS & photos for police or insurance.', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF123B5D),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        visualDensity: VisualDensity.compact,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: _exportingPdf ? null : _exportPdf,
+                      child: _exportingPdf
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Export', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Updates & Discussion Section

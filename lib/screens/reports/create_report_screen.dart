@@ -23,7 +23,8 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   final _shake = ShakeController();
   String category = 'Theft';
   DateTime incident = DateTime.now();
-  File? image;
+  List<File> images = [];
+  static const int maxImages = 4;
   bool loading = false;
   bool fetchingLocation = false;
   double? latitude;
@@ -136,9 +137,34 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
+    if (images.length >= maxImages) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('Maximum 4 photos allowed per report.'),
+          ),
+        );
+      }
+      return;
+    }
+
     try {
-      final x = await ImagePicker().pickImage(source: source, imageQuality: 85);
-      if (x != null && mounted) setState(() => image = File(x.path));
+      if (source == ImageSource.gallery) {
+        final remaining = maxImages - images.length;
+        final pickedList = await ImagePicker().pickMultiImage(imageQuality: 85, limit: remaining);
+        if (pickedList.isNotEmpty && mounted) {
+          final toAdd = pickedList.take(remaining).map((x) => File(x.path)).toList();
+          setState(() {
+            images.addAll(toAdd);
+          });
+        }
+      } else {
+        final x = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 85);
+        if (x != null && mounted) {
+          setState(() => images.add(File(x.path)));
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -149,6 +175,16 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   }
 
   void _showImageOptions() {
+    if (images.length >= maxImages) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Maximum 4 photos reached.'),
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -176,13 +212,13 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                   _pickImage(ImageSource.gallery);
                 },
               ),
-              if (image != null)
+              if (images.isNotEmpty)
                 ListTile(
                   leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: const Text('Remove Photo', style: TextStyle(color: Colors.red)),
+                  title: const Text('Clear All Photos', style: TextStyle(color: Colors.red)),
                   onTap: () {
                     Navigator.pop(ctx);
-                    setState(() => image = null);
+                    setState(() => images.clear());
                   },
                 ),
             ],
@@ -233,15 +269,18 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
     }
     setState(() => loading = true);
     try {
-      String? url;
-      if (image != null) url = await ReportService().uploadImage(image!);
+      List<String> urls = [];
+      if (images.isNotEmpty) {
+        urls = await ReportService().uploadImages(images);
+      }
       await ReportService().createReport(
         title: title.text.trim(),
         description: desc.text.trim(),
         category: category,
         location: location.text.trim(),
         incidentAt: incident,
-        imageUrl: url,
+        imageUrl: urls.isNotEmpty ? urls.first : null,
+        imageUrls: urls,
         latitude: latitude,
         longitude: longitude,
       );
@@ -387,47 +426,85 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
               onPressed: _pickDateTime,
             ),
           ),
-          AnimatedSwitcher(
-            duration: Motion.normal,
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: SizeTransition(sizeFactor: anim, child: child),
+          if (images.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Evidence Photos (${images.length}/$maxImages)',
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => images.clear()),
+                  child: const Text('Clear all', style: TextStyle(color: Colors.red, fontSize: 12)),
+                ),
+              ],
             ),
-            child: image != null
-                ? Padding(
-                    key: ValueKey(image!.path),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: Image.file(image!, height: 180, fit: BoxFit.cover, width: double.infinity),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 96,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: images.length < maxImages ? images.length + 1 : images.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, idx) {
+                  if (idx == images.length) {
+                    return InkWell(
+                      onTap: _showImageOptions,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 96,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey.shade50,
                         ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_a_photo_outlined, color: Color(0xFF123B5D), size: 28),
+                            SizedBox(height: 4),
+                            Text('Add photo', style: TextStyle(fontSize: 11, color: Color(0xFF123B5D))),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final file = images[idx];
+                  return Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(file, width: 96, height: 96, fit: BoxFit.cover),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => setState(() => images.removeAt(idx)),
                           child: CircleAvatar(
-                            backgroundColor: Colors.black.withValues(alpha: 0.6),
-                            radius: 16,
-                            child: IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white, size: 16),
-                              padding: EdgeInsets.zero,
-                              tooltip: 'Remove photo',
-                              onPressed: () => setState(() => image = null),
-                            ),
+                            radius: 11,
+                            backgroundColor: Colors.black.withValues(alpha: 0.65),
+                            child: const Icon(Icons.close, color: Colors.white, size: 14),
                           ),
                         ),
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          MotionButton(
-            label: image != null ? 'Change photo evidence' : 'Add photo evidence',
-            icon: image != null ? Icons.photo_library : Icons.camera_alt_outlined,
-            variant: MotionButtonVariant.outlined,
-            onPressed: _showImageOptions,
-          ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (images.isEmpty)
+            MotionButton(
+              label: 'Add photo evidence (up to 4)',
+              icon: Icons.add_a_photo_outlined,
+              variant: MotionButtonVariant.outlined,
+              onPressed: _showImageOptions,
+            ),
           const SizedBox(height: 18),
           Shake(
             controller: _shake,

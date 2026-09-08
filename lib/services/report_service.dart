@@ -36,6 +36,17 @@ class ReportService {
     return _client.storage.from('report-images').getPublicUrl(path);
   }
 
+  Future<List<String>> uploadImages(List<File> files) async {
+    final urls = <String>[];
+    for (final file in files) {
+      final url = await uploadImage(file);
+      if (url != null) {
+        urls.add(url);
+      }
+    }
+    return urls;
+  }
+
   Future<void> createReport({
     required String title,
     required String description,
@@ -43,9 +54,15 @@ class ReportService {
     required String location,
     required DateTime incidentAt,
     String? imageUrl,
+    List<String>? imageUrls,
     double? latitude,
     double? longitude,
   }) async {
+    final effectiveUrls = imageUrls != null && imageUrls.isNotEmpty
+        ? imageUrls
+        : (imageUrl != null && imageUrl.isNotEmpty ? [imageUrl] : <String>[]);
+    final primaryImage = effectiveUrls.isNotEmpty ? effectiveUrls.first : null;
+
     await _client.from('reports').insert({
       'user_id': _client.auth.currentUser!.id,
       'title': title,
@@ -54,7 +71,8 @@ class ReportService {
       'location': location,
       'incident_at': incidentAt.toIso8601String(),
       'status': 'Pending',
-      'image_url': imageUrl,
+      'image_url': primaryImage,
+      'image_urls': effectiveUrls,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
     });

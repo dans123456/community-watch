@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/auth_service.dart';
 import '../../services/report_service.dart';
+import '../../services/notification_service.dart';
 import '../../widgets/motion.dart';
 import '../reports/report_list_screen.dart';
 import '../reports/create_report_screen.dart';
 import '../admin/admin_dashboard.dart';
 import '../profile/profile_screen.dart';
+import 'notifications_sheet.dart';
 
 /// Shell that hosts the bottom-nav tabs. Each tab keeps its own Scaffold
 /// (app bar included) so state is preserved across tab switches.
@@ -21,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _index = 0;
   bool _admin = false;
   int _myPending = 0;
+  int _unreadNotifications = 0;
 
   @override
   void initState() {
@@ -31,10 +34,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _load() async {
     final a = await AuthService().isAdmin();
     final mine = await ReportService().getMyReports();
+    int unread = 0;
+    try {
+      unread = await NotificationService().getUnreadCount();
+    } catch (_) {}
     if (mounted) {
       setState(() {
         _admin = a;
         _myPending = mine.where((r) => r.status == 'Pending').length;
+        _unreadNotifications = unread;
       });
     }
   }
@@ -42,7 +50,15 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      _DashboardTab(admin: _admin, onReturn: _load),
+      _DashboardTab(
+        admin: _admin,
+        onReturn: _load,
+        unreadNotifications: _unreadNotifications,
+        onNotificationPressed: () => NotificationsSheet.show(
+          context,
+          onNotificationsChanged: _load,
+        ),
+      ),
       const ReportListScreen(),
       const ReportListScreen(myReports: true),
       const ProfileScreen(),
@@ -87,7 +103,15 @@ class _HomeScreenState extends State<HomeScreen> {
 class _DashboardTab extends StatelessWidget {
   final bool admin;
   final VoidCallback onReturn;
-  const _DashboardTab({required this.admin, required this.onReturn});
+  final int unreadNotifications;
+  final VoidCallback onNotificationPressed;
+
+  const _DashboardTab({
+    required this.admin,
+    required this.onReturn,
+    required this.unreadNotifications,
+    required this.onNotificationPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +140,44 @@ class _DashboardTab extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Community Watch')),
+      appBar: AppBar(
+        title: const Text('Community Watch'),
+        actions: [
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: onNotificationPressed,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined, size: 26),
+                if (unreadNotifications > 0)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.redAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        unreadNotifications > 9 ? '9+' : '$unreadNotifications',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(18),
         children: [

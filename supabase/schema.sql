@@ -27,6 +27,7 @@ create table if not exists reports (
 -- Ensure latitude and longitude columns exist on existing databases
 alter table reports add column if not exists latitude double precision;
 alter table reports add column if not exists longitude double precision;
+alter table reports add column if not exists image_urls text[];
 
 create table if not exists notifications (
   id uuid primary key default gen_random_uuid(),
@@ -52,6 +53,10 @@ drop policy if exists "reports_update_policy" on reports;
 drop policy if exists "reports_delete_own" on reports;
 drop policy if exists "reports_delete_policy" on reports;
 drop policy if exists "notifications_own" on notifications;
+drop policy if exists "notifications_select_own" on notifications;
+drop policy if exists "notifications_insert" on notifications;
+drop policy if exists "notifications_update_own" on notifications;
+drop policy if exists "notifications_delete_own" on notifications;
 drop policy if exists "Allow authenticated uploads to report-images" on storage.objects;
 drop policy if exists "Allow public read of report-images" on storage.objects;
 
@@ -89,9 +94,17 @@ using (
   )
 );
 
-create policy "notifications_own" on notifications for all
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+create policy "notifications_select_own" on notifications for select
+using (auth.uid() = user_id);
+
+create policy "notifications_insert" on notifications for insert
+with check (auth.role() = 'authenticated');
+
+create policy "notifications_update_own" on notifications for update
+using (auth.uid() = user_id);
+
+create policy "notifications_delete_own" on notifications for delete
+using (auth.uid() = user_id);
 
 -- Storage bucket for report images
 insert into storage.buckets (id, name, public)

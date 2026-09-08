@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../models/report.dart';
 import '../../services/report_service.dart';
@@ -22,6 +23,9 @@ class _ReportListScreenState extends State<ReportListScreen> {
   bool _showMap = false;
   Report? _selectedReport;
   final MapController _mapController = MapController();
+
+  Position? _userPosition;
+  bool _nearMeOnly = false;
 
   String _selectedCategory = 'All';
   String _selectedStatus = 'All';
@@ -49,6 +53,53 @@ class _ReportListScreenState extends State<ReportListScreen> {
   void initState() {
     super.initState();
     load();
+    _getUserLocation();
+  }
+
+  Future<void> _getUserLocation() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return;
+      }
+      if (permission == LocationPermission.deniedForever) return;
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 6),
+        ),
+      );
+      if (mounted) {
+        setState(() => _userPosition = pos);
+      }
+    } catch (_) {}
+  }
+
+  double? _distanceToReport(Report r) {
+    if (_userPosition == null || r.latitude == null || r.longitude == null) {
+      return null;
+    }
+    return Geolocator.distanceBetween(
+      _userPosition!.latitude,
+      _userPosition!.longitude,
+      r.latitude!,
+      r.longitude!,
+    );
+  }
+
+  String? _formatDistance(Report r) {
+    final meters = _distanceToReport(r);
+    if (meters == null) return null;
+    if (meters < 1000) {
+      return '${meters.round()}m away';
+    } else {
+      return '${(meters / 1000).toStringAsFixed(1)} km away';
+    }
   }
 
   Future<void> load() async {
@@ -66,7 +117,12 @@ class _ReportListScreenState extends State<ReportListScreen> {
     return reports.where((r) {
       final matchesCategory = _selectedCategory == 'All' || r.category == _selectedCategory;
       final matchesStatus = _selectedStatus == 'All' || r.status == _selectedStatus;
-      return matchesCategory && matchesStatus;
+      if (!matchesCategory || !matchesStatus) return false;
+      if (_nearMeOnly) {
+        final dist = _distanceToReport(r);
+        if (dist == null || dist > 5000) return false;
+      }
+      return true;
     }).toList();
   }
 
@@ -205,6 +261,49 @@ class _ReportListScreenState extends State<ReportListScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 4),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Text(
+                  'Radar: ',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                ),
+                FilterChip(
+                  avatar: Icon(
+                    Icons.radar,
+                    size: 15,
+                    color: _nearMeOnly ? Colors.white : const Color(0xFF123B5D),
+                  ),
+                  label: Text(_userPosition != null ? 'Near Me (< 5 km)' : 'Near Me (Enable GPS)'),
+                  selected: _nearMeOnly,
+                  selectedColor: const Color(0xFF123B5D),
+                  checkmarkColor: Colors.white,
+                  onSelected: (val) {
+                    if (val && _userPosition == null) {
+                      _getUserLocation();
+                    }
+                    setState(() => _nearMeOnly = val);
+                  },
+                  visualDensity: VisualDensity.compact,
+                  labelStyle: TextStyle(
+                    fontSize: 11,
+                    fontWeight: _nearMeOnly ? FontWeight.bold : FontWeight.normal,
+                    color: _nearMeOnly ? Colors.white : Colors.black87,
+                  ),
+                ),
+                if (_userPosition != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '📍 GPS active',
+                    style: TextStyle(fontSize: 11, color: Colors.blue.shade700, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -226,6 +325,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
                   itemCount: list.length,
                   itemBuilder: (context, i) {
                     final r = list[i];
+                    final distStr = _formatDistance(r);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: FadeSlideIn(
@@ -283,6 +383,62 @@ class _ReportListScreenState extends State<ReportListScreen> {
                                           ),
                                         ],
                                       ),
+                                      if (distStr != null || r.imageUrls.length > 1) ...[
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            if (distStr != null)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.withValues(alpha: 0.1),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(Icons.near_me, size: 11, color: Colors.blueAccent),
+                                                    const SizedBox(width: 3),
+                                                    Text(
+                                                      distStr,
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: Colors.blueAccent,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            if (r.imageUrls.length > 1) ...[
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  border: Border.all(color: Colors.grey.shade300),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(Icons.photo_library_outlined, size: 11, color: Colors.black54),
+                                                    const SizedBox(width: 3),
+                                                    Text(
+                                                      '${r.imageUrls.length}',
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Colors.black87,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -300,9 +456,11 @@ class _ReportListScreenState extends State<ReportListScreen> {
   }
 
   Widget _buildMapView(List<Report> geoReports) {
-    final LatLng centerPoint = geoReports.isNotEmpty
-        ? LatLng(geoReports.first.latitude!, geoReports.first.longitude!)
-        : const LatLng(5.6037, -0.1870);
+    final LatLng centerPoint = _userPosition != null
+        ? LatLng(_userPosition!.latitude, _userPosition!.longitude)
+        : (geoReports.isNotEmpty
+            ? LatLng(geoReports.first.latitude!, geoReports.first.longitude!)
+            : const LatLng(5.6037, -0.1870));
 
     return Stack(
       children: [
@@ -310,7 +468,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
           mapController: _mapController,
           options: MapOptions(
             initialCenter: centerPoint,
-            initialZoom: geoReports.isNotEmpty ? 13.5 : 3.0,
+            initialZoom: geoReports.isNotEmpty || _userPosition != null ? 13.5 : 3.0,
             onTap: (_, __) {
               if (_selectedReport != null) {
                 setState(() => _selectedReport = null);
@@ -323,43 +481,107 @@ class _ReportListScreenState extends State<ReportListScreen> {
               userAgentPackageName: 'com.communitywatch.app',
             ),
             MarkerLayer(
-              markers: geoReports.map((r) {
-                final isSelected = _selectedReport?.id == r.id;
-                final color = statusColor(r.status);
-                return Marker(
-                  point: LatLng(r.latitude!, r.longitude!),
-                  width: isSelected ? 52 : 42,
-                  height: isSelected ? 52 : 42,
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() => _selectedReport = r);
-                      _mapController.move(LatLng(r.latitude!, r.longitude!), 15.0);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: color.withValues(alpha: 0.5),
-                            blurRadius: isSelected ? 12 : 6,
-                            spreadRadius: isSelected ? 3 : 1,
+              markers: [
+                if (_userPosition != null)
+                  Marker(
+                    point: LatLng(_userPosition!.latitude, _userPosition!.longitude),
+                    width: 46,
+                    height: 46,
+                    child: Tooltip(
+                      message: 'You Are Here',
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.25),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: Colors.blueAccent,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withValues(alpha: 0.5),
+                                  blurRadius: 6,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
                           ),
                         ],
-                        border: Border.all(color: color, width: isSelected ? 3.5 : 2),
-                      ),
-                      child: Icon(
-                        _categoryIcon(r.category),
-                        size: isSelected ? 26 : 20,
-                        color: color,
                       ),
                     ),
                   ),
-                );
-              }).toList(),
+                ...geoReports.map((r) {
+                  final isSelected = _selectedReport?.id == r.id;
+                  final color = statusColor(r.status);
+                  return Marker(
+                    point: LatLng(r.latitude!, r.longitude!),
+                    width: isSelected ? 52 : 42,
+                    height: isSelected ? 52 : 42,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedReport = r);
+                        _mapController.move(LatLng(r.latitude!, r.longitude!), 15.0);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.5),
+                              blurRadius: isSelected ? 12 : 6,
+                              spreadRadius: isSelected ? 3 : 1,
+                            ),
+                          ],
+                          border: Border.all(color: color, width: isSelected ? 3.5 : 2),
+                        ),
+                        child: Icon(
+                          _categoryIcon(r.category),
+                          size: isSelected ? 26 : 20,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
             ),
           ],
+        ),
+
+        // Floating "Center on My Location" FAB
+        Positioned(
+          right: 16,
+          top: 16,
+          child: FloatingActionButton.small(
+            heroTag: 'recenter_radar_user',
+            backgroundColor: Colors.white,
+            foregroundColor: const Color(0xFF123B5D),
+            tooltip: 'Recenter on My Location',
+            onPressed: () async {
+              if (_userPosition == null) {
+                await _getUserLocation();
+              }
+              if (_userPosition != null) {
+                _mapController.move(
+                  LatLng(_userPosition!.latitude, _userPosition!.longitude),
+                  15.0,
+                );
+              }
+            },
+            child: const Icon(Icons.my_location),
+          ),
         ),
 
         // If no reports match filter with coordinates

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/report.dart';
 import '../../services/report_service.dart';
+import '../../services/notification_service.dart';
 import '../../widgets/motion.dart';
 import '../reports/report_detail_screen.dart';
 
@@ -121,6 +122,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 final messenger = ScaffoldMessenger.of(context);
                                 try {
                                   await service.updateReport(r.id, {'status': s});
+                                  try {
+                                    await NotificationService().notifyUser(
+                                      userId: r.userId,
+                                      title: 'Report Status Updated',
+                                      message: 'Your report "${r.title}" has been marked as "$s".',
+                                    );
+                                  } catch (_) {}
                                   messenger.showSnackBar(
                                     SnackBar(
                                       behavior: SnackBarBehavior.floating,
