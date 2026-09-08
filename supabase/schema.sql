@@ -1,0 +1,106 @@
+-- Community Watch database
+create extension if not exists "pgcrypto";
+
+create table if not exists profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  full_name text not null,
+  role text not null default 'user' check (role in ('user','admin')),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists reports (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  title text not null,
+  description text not null,
+  category text not null,
+  location text not null,
+  incident_at timestamptz not null,
+  status text not null default 'Pending'
+    check (status in ('Pending','Under Investigation','Resolved','Rejected')),
+  image_url text,
+  latitude double precision,
+  longitude double precision,
+  created_at timestamptz not null default now()
+);
+
+-- Ensure latitude and longitude columns exist on existing databases
+alter table reports add column if not exists latitude double precision;
+alter table reports add column if not exists longitude double precision;
+
+create table if not exists notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  title text not null,
+  message text not null,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table profiles enable row level security;
+alter table reports enable row level security;
+alter table notifications enable row level security;
+
+-- Drop existing policies if they already exist so the script runs cleanly
+drop policy if exists "profiles_select_own" on profiles;
+drop policy if exists "profiles_insert_own" on profiles;
+drop policy if exists "profiles_update_own" on profiles;
+drop policy if exists "reports_read_authenticated" on reports;
+drop policy if exists "reports_insert_own" on reports;
+drop policy if exists "reports_update_own" on reports;
+drop policy if exists "reports_update_policy" on reports;
+drop policy if exists "reports_delete_own" on reports;
+drop policy if exists "notifications_own" on notifications;
+drop policy if exists "Allow authenticated uploads to report-images" on storage.objects;
+drop policy if exists "Allow public read of report-images" on storage.objects;
+
+create policy "profiles_select_own" on profiles for select
+using (auth.uid() = id);
+
+create policy "profiles_insert_own" on profiles for insert
+with check (auth.uid() = id);
+
+create policy "profiles_update_own" on profiles for update
+using (auth.uid() = id);
+
+create policy "reports_read_authenticated" on reports for select
+using (auth.role() = 'authenticated');
+
+create policy "reports_insert_own" on reports for insert
+with check (auth.uid() = user_id);
+
+-- Authors can update their own report, and admins can update any report (e.g. status changes)
+create policy "reports_update_policy" on reports for update
+using (
+  auth.uid() = user_id
+  or exists (
+    select 1 from profiles
+    where profiles.id = auth.uid() and profiles.role = 'admin'
+  )
+);
+
+create policy "reports_delete_own" on reports for delete
+using (auth.uid() = user_id);
+
+create policy "notifications_own" on notifications for all
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+-- Storage bucket for report images
+insert into storage.buckets (id, name, public)
+values ('report-images', 'report-images', true)
+on conflict (id) do nothing;
+
+create policy "Allow authenticated uploads to report-images"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'report-images');
+
+create policy "Allow public read of report-images"
+on storage.objects for select
+to public
+using (bucket_id = 'report-images');
+
+-- IMPORTANT: after creating your first account, promote that user's profile
+-- to admin from the Supabase SQL editor:
+-- update profiles set role = 'admin' where id = 'YOUR-USER-UUID';
