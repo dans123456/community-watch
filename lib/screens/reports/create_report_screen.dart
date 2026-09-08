@@ -99,7 +99,13 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
         longitude = position.longitude;
       });
 
-      _mapController?.move(LatLng(latitude!, longitude!), 15.0);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          _mapController?.move(LatLng(latitude!, longitude!), 15.0);
+        } catch (_) {
+          // Map is newly rendered with initialCenter, safe to ignore
+        }
+      });
 
       try {
         final placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
@@ -266,7 +272,12 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           TextField(
             controller: desc,
             maxLines: 5,
-            decoration: const InputDecoration(labelText: 'Description'),
+            textAlignVertical: TextAlignVertical.top,
+            decoration: const InputDecoration(
+              labelText: 'Description',
+              alignLabelWithHint: true,
+              hintText: 'Provide details about what happened...',
+            ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
