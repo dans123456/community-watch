@@ -41,21 +41,28 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Forgot password')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: FadeSlideIn(
-          child: Shake(
-            controller: _shake,
-            child: Column(
-              children: [
-                TextField(
-                  controller: email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                ),
-                const SizedBox(height: 20),
-                MotionButton(label: 'Send reset link', loading: loading, onPressed: loading ? null : send),
-              ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(24),
+          child: FadeSlideIn(
+            child: Shake(
+              controller: _shake,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: email,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  MotionButton(label: 'Send reset link', loading: loading, onPressed: loading ? null : send),
+                ],
+              ),
             ),
           ),
         ),

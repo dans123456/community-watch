@@ -95,104 +95,143 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: FadeSlideIn(
-                child: Shake(
-                  controller: _shake,
-                  child: AutofillGroup(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Icon(Icons.shield_outlined, size: 70, color: Theme.of(context).colorScheme.primary),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Community Watch',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Report, monitor and stay informed about your community.',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 32),
-                        TextField(
-                          controller: email,
-                          keyboardType: TextInputType.emailAddress,
-                          autofillHints: const [AutofillHints.email, AutofillHints.username],
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: password,
-                          obscureText: _obscurePassword,
-                          autofillHints: const [AutofillHints.password],
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                color: Colors.grey.shade600,
-                              ),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                              tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 32,
+                  maxWidth: 430,
+                ),
+                child: Center(
+                  child: FadeSlideIn(
+                    child: Shake(
+                      controller: _shake,
+                      child: AutofillGroup(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Checkbox(
-                              value: _rememberMe,
-                              onChanged: (val) => setState(() => _rememberMe = val ?? false),
-                              activeColor: Theme.of(context).colorScheme.primary,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            Icon(Icons.shield_outlined, size: 58, color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Community Watch',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
-                            GestureDetector(
-                              onTap: () => setState(() => _rememberMe = !_rememberMe),
-                              child: const Text('Remember me', style: TextStyle(fontSize: 13)),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Report, monitor and stay informed about your community.',
+                              textAlign: TextAlign.center,
                             ),
-                            const Spacer(),
+                            const SizedBox(height: 24),
+                            TextField(
+                              controller: email,
+                              keyboardType: TextInputType.emailAddress,
+                              autofillHints: const [AutofillHints.email, AutofillHints.username],
+                              decoration: const InputDecoration(
+                                labelText: 'Email',
+                                prefixIcon: Icon(Icons.email_outlined),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: password,
+                              obscureText: _obscurePassword,
+                              autofillHints: const [AutofillHints.password],
+                              decoration: InputDecoration(
+                                labelText: 'Password',
+                                prefixIcon: const Icon(Icons.lock_outline),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(8),
+                                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: Checkbox(
+                                            value: _rememberMe,
+                                            onChanged: (val) => setState(() => _rememberMe = val ?? false),
+                                            activeColor: Theme.of(context).colorScheme.primary,
+                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            visualDensity: VisualDensity.compact,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Remember me',
+                                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () => pushAnimated(context, const ForgotPasswordScreen()),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    visualDensity: VisualDensity.compact,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text(
+                                    'Forgot password?',
+                                    style: TextStyle(
+                                      color: Theme.of(context).colorScheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            MotionButton(label: 'Login', loading: loading, onPressed: loading ? null : login),
+                            if (_canUseBiometrics) ...[
+                              const SizedBox(height: 10),
+                              MotionButton(
+                                label: 'Sign in with Biometrics',
+                                icon: Icons.fingerprint,
+                                variant: MotionButtonVariant.tonal,
+                                onPressed: _loginWithBiometrics,
+                              ),
+                            ],
+                            const SizedBox(height: 10),
                             MotionButton(
-                              label: 'Forgot password?',
-                              variant: MotionButtonVariant.text,
-                              expand: false,
-                              onPressed: () => pushAnimated(context, const ForgotPasswordScreen()),
+                              label: 'Create account',
+                              variant: MotionButtonVariant.outlined,
+                              onPressed: () => pushAnimated(context, const RegisterScreen()),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        MotionButton(label: 'Login', loading: loading, onPressed: loading ? null : login),
-                        if (_canUseBiometrics) ...[
-                          const SizedBox(height: 12),
-                          MotionButton(
-                            label: 'Sign in with Biometrics',
-                            icon: Icons.fingerprint,
-                            variant: MotionButtonVariant.tonal,
-                            onPressed: _loginWithBiometrics,
-                          ),
-                        ],
-                        const SizedBox(height: 12),
-                        MotionButton(
-                          label: 'Create account',
-                          variant: MotionButtonVariant.outlined,
-                          onPressed: () => pushAnimated(context, const RegisterScreen()),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
