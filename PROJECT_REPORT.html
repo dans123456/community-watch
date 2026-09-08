@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Community Watch - Academic Project Report</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 18mm 20mm 18mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #2D3748;
+      line-height: 1.65;
+      font-size: 11pt;
+      margin: 0;
+      padding: 0;
+      background: #FFFFFF;
+    }
+
+    .header-block {
+      border-bottom: 3px solid #123B5D;
+      padding-bottom: 18px;
+      margin-bottom: 26px;
+    }
+
+    h1 {
+      font-size: 22pt;
+      color: #123B5D;
+      margin: 0 0 10px 0;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .meta-box {
+      background: #F7FAFC;
+      border: 1px solid #E2E8F0;
+      border-left: 4px solid #123B5D;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 10pt;
+      color: #4A5568;
+      margin-top: 10px;
+    }
+
+    .meta-box strong {
+      color: #1A202C;
+    }
+
+    h2 {
+      font-size: 14pt;
+      color: #123B5D;
+      border-bottom: 1.5px solid #E2E8F0;
+      padding-bottom: 6px;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      page-break-after: avoid;
+    }
+
+    h3 {
+      font-size: 11.5pt;
+      color: #2B6CB0;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin: 0 0 10px 0;
+      text-align: justify;
+    }
+
+    ul, ol {
+      margin: 0 0 12px 0;
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 6px;
+      text-align: justify;
+    }
+
+    li strong {
+      color: #1A202C;
+    }
+
+    blockquote {
+      background: #EDF2F7;
+      border-left: 4px solid #3182CE;
+      margin: 14px 0;
+      padding: 12px 16px;
+      font-style: italic;
+      color: #2D3748;
+      border-radius: 0 6px 6px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 9.5pt;
+      page-break-inside: avoid;
+    }
+
+    th, td {
+      border: 1px solid #CBD5E0;
+      padding: 9px 12px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #123B5D;
+      color: #FFFFFF;
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) {
+      background-color: #F7FAFC;
+    }
+
+    code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      background: #EDF2F7;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 9pt;
+      color: #C53030;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 8pt;
+      font-weight: 700;
+      border-radius: 12px;
+      background: #EBF8FF;
+      color: #2B6CB0;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-block">
+    <h1>COMMUNITY WATCH: ACADEMIC PROJECT REPORT</h1>
+    <div class="meta-box">
+      <div><strong>Project Title:</strong> Community Watch: A Real-Time Community Insecurity Reporting and Incident Monitoring Mobile System</div>
+      <div style="margin-top: 4px;"><strong>Discipline:</strong> Computer Science / Software Engineering &nbsp;|&nbsp; <strong>Classification:</strong> Final-Year / Capstone Project</div>
+    </div>
+  </div>
+
+  <h2>1. Background of the Study</h2>
+  <p>In contemporary urban and semi-urban communities, safety and security remain fundamental prerequisites for socio-economic development and quality of life. However, maintaining effective community surveillance and public security has grown increasingly challenging due to rapid urbanization, expanding residential perimeters, and strained law enforcement resources.</p>
+
+  <p>Traditionally, community insecurity reporting has relied heavily on archaic and fragmented communication channels, including:</p>
+  <ul>
+    <li>In-person visits to local police precincts,</li>
+    <li>Voice telephone calls to emergency hotlines (which frequently suffer from line congestion, long hold times, or lack of coverage),</li>
+    <li>Unverified word-of-mouth alerts, and</li>
+    <li>Disorganized, unmoderated social media threads or messaging groups (e.g., WhatsApp, Telegram).</li>
+  </ul>
+
+  <p>While social media and messaging groups have demonstrated citizen eagerness to share safety alerts, they suffer from significant operational drawbacks:</p>
+  <ol>
+    <li><strong>Lack of Structure:</strong> Incident messages lack standardized classification (e.g., distinguishing between vandalism, armed robbery, fire outbreaks, or suspicious activities).</li>
+    <li><strong>Missing Spatial Data:</strong> Descriptions such as <em>"near the junction with the yellow kiosk"</em> fail to provide actionable, machine-readable GPS coordinates necessary for emergency dispatches.</li>
+    <li><strong>No Accountable Feedback Loop:</strong> Traditional reports vanish into bureaucratic voids; reporting citizens rarely receive status updates or verification on whether responding units have addressed the incident.</li>
+  </ol>
+
+  <p>With the global proliferation of smartphones equipped with global positioning systems (GPS), high-resolution cameras, and ubiquitous mobile broadband, mobile computing offers a transformative opportunity for community policing and crowd-sourced intelligence.</p>
+
+  <p><strong>Community Watch</strong> was conceived as an intelligent, secure, and user-centric mobile solution that bridges the communication divide between community residents and security responders. Leveraging the <strong>Flutter</strong> framework for cross-platform client responsiveness, <strong>OpenStreetMap</strong> for geographic spatial visualization, and <strong>Supabase</strong> (PostgreSQL with Row-Level Security) for cloud database and media persistence, the system provides a unified ecosystem for crowdsourced incident reporting, real-time status tracking, interactive hazard mapping, emergency distress dialing, and incident-level community collaboration.</p>
+
+  <h2>2. Problem Statement</h2>
+  <p>Despite advancements in consumer telecommunications, community safety management continues to face acute systemic challenges:</p>
+
+  <ol>
+    <li><strong>Delayed Incident Reporting and Slow Emergency Response:</strong> Traditional reporting mechanisms require substantial human mediation before responders can be mobilized. In life-threatening scenarios (such as ongoing robberies, fires, or physical assaults), every minute spent locating an emergency contact number or describing landmark directions severely degrades emergency outcomes.</li>
+    <li><strong>Inaccurate Geographical and Verifiable Incident Data:</strong> Textual and verbal descriptions of incident locations are prone to subjectivity, error, and ambiguity. Furthermore, responders frequently lack preliminary photographic evidence before arriving at a scene, impairing their ability to assess threat severity or allocate appropriate personnel and equipment.</li>
+    <li><strong>Absence of Transparency and Citizen Engagement:</strong> In conventional reporting paradigms, citizens possess zero visibility into the lifecycle of their reported cases. This lack of transparency fosters apathy and skepticism among community members, discouraging civic participation in neighborhood crime prevention.</li>
+    <li><strong>Information Fragmentation and Disinformation:</strong> Unstructured alerts circulated across casual messaging channels often generate mass panic, propagate unverified rumors, and lack official responder moderation or status verifications.</li>
+    <li><strong>Resource and Infrastructure Barriers for Local Neighborhoods:</strong> Enterprise municipal dispatch software solutions are prohibitively expensive and complex for local residential committees, university campuses, and estate associations. There is an urgent necessity for an accessible, low-latency, cross-platform mobile solution that democratizes community-level incident management.</li>
+  </ol>
+
+  <h2>3. Aim of the Project</h2>
+  <blockquote>
+    To design, develop, and deploy a responsive, cross-platform mobile application and cloud-backed monitoring system—<strong>Community Watch</strong>—that enables citizens and residential communities to report insecurity incidents in real time with high-precision GPS positioning and visual evidence, track incident resolution lifecycles, view community hazard maps, access emergency hotlines, and engage in moderated situational updates.
+  </blockquote>
+
+  <h2>4. Objectives of the Study</h2>
+  <p>To fulfill the primary aim, the study addresses the following specific technical and research objectives:</p>
+
+  <ol>
+    <li><strong>System Requirements and Architectural Modeling:</strong>
+      <ul>
+        <li>Investigate and analyze user, community, and administrative requirements for community incident monitoring.</li>
+        <li>Design a secure multi-tier system architecture connecting client mobile devices with an asynchronous cloud backend.</li>
+      </ul>
+    </li>
+    <li><strong>Secure User Authentication and Role-Based Access Control:</strong>
+      <ul>
+        <li>Implement cryptographically secure user authentication (sign-up, sign-in, session recovery) via Supabase Auth.</li>
+        <li>Enforce database-level <strong>Row-Level Security (RLS)</strong> policies that demarcate privileges between standard community residents and elevated system administrators.</li>
+      </ul>
+    </li>
+    <li><strong>Geolocated Incident Reporting Engine:</strong>
+      <ul>
+        <li>Develop an intuitive incident submission interface enabling citizens to categorize incidents (e.g., <em>Theft, Robbery, Assault, Vandalism, Fire, Suspicious Activity</em>).</li>
+        <li>Integrate device GPS hardware using <code>geolocator</code> to capture high-accuracy latitude and longitude coordinates.</li>
+        <li>Implement automated reverse-geocoding via <code>geocoding</code> to translate raw GPS coordinates into recognizable street addresses.</li>
+        <li>Enable media attachment through camera/gallery image capture and cloud storage bucket persistence.</li>
+      </ul>
+    </li>
+    <li><strong>Interactive Spatial Mapping and Visualization:</strong>
+      <ul>
+        <li>Integrate an open-source mapping engine using <code>flutter_map</code> and Leaflet-based OpenStreetMap tiles.</li>
+        <li>Plot active community incident markers dynamically on the map, color-coded according to investigation status (<em>Pending, Under Investigation, Resolved, Rejected</em>).</li>
+        <li>Provide interactive marker touch inspection displaying summary preview cards with deep linking to full incident dossiers.</li>
+      </ul>
+    </li>
+    <li><strong>Emergency SOS Rapid-Dialing Interface:</strong>
+      <ul>
+        <li>Engineer an immediate, high-priority <strong>Emergency SOS</strong> quick-action module on the home dashboard.</li>
+        <li>Integrate native telephony protocols via <code>url_launcher</code> allowing one-tap speed dialing to verified law enforcement, medical ambulance, fire rescue, and neighborhood patrol dispatchers.</li>
+      </ul>
+    </li>
+    <li><strong>Incident Lifecycle Management &amp; Administrative Dashboard:</strong>
+      <ul>
+        <li>Construct a dedicated administrative monitoring dashboard featuring animated real-time statistical metrics (Total Reports, Pending, Investigating, Resolved).</li>
+        <li>Provide administrative tooling to review incoming incident dossiers and transition case statuses across their lifecycle.</li>
+      </ul>
+    </li>
+    <li><strong>Collaborative Discussion and Situational Updates:</strong>
+      <ul>
+        <li>Engineer a multi-user, real-time discussion thread beneath individual incident reports.</li>
+        <li>Implement automated verified badging (<code>[OFFICIAL]</code>) to distinguish official responder advisories from civilian witness commentary.</li>
+      </ul>
+    </li>
+    <li><strong>Dynamic Multi-Criteria Filtering:</strong>
+      <ul>
+        <li>Develop real-time filtering mechanisms across both the structured list view and the spatial map view based on incident category and investigation status.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <h2>5. Scope and Delimitations of the Study</h2>
+  <h3>In-Scope:</h3>
+  <ul>
+    <li><strong>Client Application:</strong> Cross-platform mobile client built using Dart and Flutter, targeting Android (and iOS-ready architecture).</li>
+    <li><strong>Backend Infrastructure:</strong> Managed PostgreSQL relational database with automated schema migrations, storage buckets, and serverless authentication provided by Supabase.</li>
+    <li><strong>Geographic Services:</strong> GPS positioning, reverse address lookup, and interactive tile rendering without proprietary API billing dependencies.</li>
+    <li><strong>Telephony Integration:</strong> Direct invocation of device dialers for emergency hotlines.</li>
+    <li><strong>Security:</strong> Strict Row-Level Security (RLS) ensuring users manage only their own submissions while preserving public read transparency for community safety.</li>
+  </ul>
+
+  <h3>Delimitations (Out-of-Scope):</h3>
+  <ul>
+    <li>Automated hardware-based alarm integration (e.g., physical sirens or CCTV feeds).</li>
+    <li>SMS cellular fallback during periods of total mobile internet disconnection.</li>
+  </ul>
+
+  <h2>6. Significance of the Study</h2>
+  <ol>
+    <li><strong>For Citizens &amp; Residents:</strong> Provides an accessible, empowering tool to document threats without fear, seek emergency assistance in seconds, and stay informed about safety developments in their immediate surroundings.</li>
+    <li><strong>For Law Enforcement &amp; Community Patrols:</strong> Delivers structured, geocoded, and photo-verified intelligence, drastically improving response times, route planning, and resource allocation.</li>
+    <li><strong>For Community Leadership &amp; Estate Associations:</strong> Offers actionable data analytics on crime patterns, incident hotspots, and resolution efficiency, supporting data-driven security policies.</li>
+    <li><strong>Academic &amp; Technical Contribution:</strong> Demonstrates how modern cross-platform toolchains (Flutter), serverless SQL architectures (Supabase with RLS), and open-source spatial cartography (OpenStreetMap) can be synergized to build high-performance, cost-effective public safety solutions without dependence on proprietary cloud mapping licenses.</li>
+  </ol>
+
+  <h2>7. System Architecture Overview</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 25%;">Component Layer</th>
+        <th style="width: 30%;">Technology Employed</th>
+        <th style="width: 45%;">Core Responsibilities</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Presentation Tier</strong></td>
+        <td>Flutter (Dart 3.x), Material 3, Motion System</td>
+        <td>Mobile UI, micro-animations, form validation, dynamic filtering, map rendering</td>
+      </tr>
+      <tr>
+        <td><strong>Spatial / Geolocation</strong></td>
+        <td><code>geolocator</code>, <code>geocoding</code>, <code>flutter_map</code>, <code>latlong2</code></td>
+        <td>GPS acquisition, reverse geocoding, OpenStreetMap tile cache, marker positioning</td>
+      </tr>
+      <tr>
+        <td><strong>Hardware Integration</strong></td>
+        <td><code>image_picker</code>, <code>url_launcher</code></td>
+        <td>Camera/gallery evidence capture, native telephony dialing (<code>tel:</code>)</td>
+      </tr>
+      <tr>
+        <td><strong>Backend &amp; Persistence</strong></td>
+        <td>Supabase (PostgreSQL 15+)</td>
+        <td>Relational tables (<code>profiles</code>, <code>reports</code>, <code>report_comments</code>), media storage</td>
+      </tr>
+      <tr>
+        <td><strong>Security Tier</strong></td>
+        <td>PostgreSQL Row-Level Security (RLS)</td>
+        <td>Declarative access controls, user data isolation, admin privilege verification</td>
+      </tr>
+      <tr>
+        <td><strong>DevOps / CI/CD</strong></td>
+        <td>GitHub Actions, Git</td>
+        <td>Automated cloud Android APK and iOS IPA packaging</td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>
+</html>
