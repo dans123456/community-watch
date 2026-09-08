@@ -101,6 +101,28 @@ on storage.objects for select
 to public
 using (bucket_id = 'report-images');
 
+-- Incident comments and updates
+create table if not exists report_comments (
+  id uuid primary key default gen_random_uuid(),
+  report_id uuid not null references reports(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  user_name text not null,
+  comment text not null,
+  is_official boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table report_comments enable row level security;
+
+drop policy if exists "report_comments_select" on report_comments;
+drop policy if exists "report_comments_insert" on report_comments;
+
+create policy "report_comments_select" on report_comments for select
+using (auth.role() = 'authenticated');
+
+create policy "report_comments_insert" on report_comments for insert
+with check (auth.uid() = user_id);
+
 -- IMPORTANT: after creating your first account, promote that user's profile
 -- to admin from the Supabase SQL editor:
 -- update profiles set role = 'admin' where id = 'YOUR-USER-UUID';

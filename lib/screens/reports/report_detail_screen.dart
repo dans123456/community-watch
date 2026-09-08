@@ -1,29 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:intl/intl.dart';
 import '../../models/report.dart';
+import '../../models/report_comment.dart';
 import '../../services/report_service.dart';
 import '../../widgets/motion.dart';
 
-class ReportDetailScreen extends StatelessWidget {
+class ReportDetailScreen extends StatefulWidget {
   final Report report;
   const ReportDetailScreen({super.key, required this.report});
+
+  @override
+  State<ReportDetailScreen> createState() => _ReportDetailScreenState();
+}
+
+class _ReportDetailScreenState extends State<ReportDetailScreen> {
+  final _commentController = TextEditingController();
+  final _reportService = ReportService();
+  List<ReportComment> _comments = [];
+  bool _loadingComments = true;
+  bool _submittingComment = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadComments();
+  }
+
+  Future<void> _loadComments() async {
+    try {
+      final list = await _reportService.getComments(widget.report.id);
+      if (mounted) {
+        setState(() {
+          _comments = list;
+          _loadingComments = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingComments = false);
+    }
+  }
+
+  Future<void> _sendComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _submittingComment = true);
+    try {
+      await _reportService.addComment(widget.report.id, text);
+      _commentController.clear();
+      FocusScope.of(context).unfocus();
+      await _loadComments();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(behavior: SnackBarBehavior.floating, content: Text('Error adding comment: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submittingComment = false);
+    }
+  }
 
   Future<void> _delete(BuildContext context) async {
     final confirmed = await showMotionConfirm(
       context,
       title: 'Delete report?',
-      message: 'This will permanently remove "${report.title}" from your reports.',
+      message: 'This will permanently remove "${widget.report.title}" from your reports.',
       confirmLabel: 'Delete',
       danger: true,
     );
     if (!confirmed) return;
-    await ReportService().deleteReport(report.id);
+    await _reportService.deleteReport(widget.report.id);
     if (context.mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final report = widget.report;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Report Details')),
       body: ListView(
@@ -48,7 +104,10 @@ class ReportDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          FadeSlideIn(index: 2, child: Text(report.description, style: const TextStyle(height: 1.5))),
+          FadeSlideIn(
+            index: 2,
+            child: Text(report.description, style: const TextStyle(height: 1.5)),
+          ),
           const SizedBox(height: 18),
           FadeSlideIn(
             index: 3,
@@ -118,7 +177,7 @@ class ReportDetailScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: FadeSlideIn(
-                index: 4,
+                index: 5,
                 child: Hero(
                   tag: 'report-image-${report.id}',
                   child: ClipRRect(
@@ -128,10 +187,127 @@ class ReportDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
+
+          // Updates & Discussion Section
+          Text(
+            'Updates & Discussion (${_comments.length})',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+
+          // Add Comment Input Box
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _commentController,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: 'Add an update or comment...',
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                  ),
+                  onSubmitted: (_) => _sendComment(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _submittingComment
+                  ? const SizedBox(width: 36, height: 36, child: CircularProgressIndicator(strokeWidth: 2))
+                  : IconButton.filled(
+                      icon: const Icon(Icons.send, size: 20),
+                      onPressed: _sendComment,
+                    ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Comments List
+          if (_loadingComments)
+            const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+          else if (_comments.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'No updates yet. Resident witnesses or responding authorities can post information above.',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+            )
+          else
+            ...List.generate(_comments.length, (i) {
+              final c = _comments[i];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: MotionCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 14,
+                              backgroundColor: c.isOfficial
+                                  ? const Color(0xFF1565C0)
+                                  : Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                              child: Text(
+                                c.userName.isNotEmpty ? c.userName[0].toUpperCase() : 'U',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: c.isOfficial ? Colors.white : Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Text(c.userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  if (c.isOfficial) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF1565C0),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'OFFICIAL',
+                                        style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            Text(
+                              DateFormat('MMM d, h:mm a').format(c.createdAt.toLocal()),
+                              style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(c.comment, style: const TextStyle(fontSize: 14, height: 1.3)),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+
+          const SizedBox(height: 20),
           if (report.status == 'Pending')
             FadeSlideIn(
-              index: 5,
+              index: 6,
               child: MotionButton(
                 label: 'Delete Report',
                 icon: Icons.delete_outline,

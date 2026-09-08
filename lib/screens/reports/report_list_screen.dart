@@ -23,6 +23,28 @@ class _ReportListScreenState extends State<ReportListScreen> {
   Report? _selectedReport;
   final MapController _mapController = MapController();
 
+  String _selectedCategory = 'All';
+  String _selectedStatus = 'All';
+
+  final List<String> _categories = [
+    'All',
+    'Theft',
+    'Robbery',
+    'Assault',
+    'Vandalism',
+    'Fire',
+    'Suspicious Activity',
+    'Other',
+  ];
+
+  final List<String> _statuses = [
+    'All',
+    'Pending',
+    'Under Investigation',
+    'Resolved',
+    'Rejected',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +60,14 @@ class _ReportListScreenState extends State<ReportListScreen> {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  List<Report> get _filteredReports {
+    return reports.where((r) {
+      final matchesCategory = _selectedCategory == 'All' || r.category == _selectedCategory;
+      final matchesStatus = _selectedStatus == 'All' || r.status == _selectedStatus;
+      return matchesCategory && matchesStatus;
+    }).toList();
   }
 
   IconData _categoryIcon(String category) {
@@ -61,7 +91,8 @@ class _ReportListScreenState extends State<ReportListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final geoReports = reports.where((r) => r.latitude != null && r.longitude != null).toList();
+    final filtered = _filteredReports;
+    final geoReports = filtered.where((r) => r.latitude != null && r.longitude != null).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -79,119 +110,190 @@ class _ReportListScreenState extends State<ReportListScreen> {
           ),
         ],
       ),
-      body: _showMap
-          ? _buildMapView(geoReports)
-          : _buildListView(),
-    );
-  }
-
-  Widget _buildListView() {
-    return Column(
-      children: [
-        if (!widget.myReports)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: search,
-              onSubmitted: (_) => load(),
-              decoration: InputDecoration(
-                hintText: 'Search title or location',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: MotionIconButton(
-                  icon: Icons.search,
-                  onPressed: load,
-                  tooltip: 'Search',
+      body: Column(
+        children: [
+          if (!widget.myReports)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: TextField(
+                controller: search,
+                onSubmitted: (_) => load(),
+                decoration: InputDecoration(
+                  hintText: 'Search title or location',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: MotionIconButton(
+                    icon: Icons.search,
+                    onPressed: load,
+                    tooltip: 'Search',
+                  ),
                 ),
               ),
             ),
+          _buildFilterBar(),
+          Expanded(
+            child: _showMap
+                ? _buildMapView(geoReports)
+                : _buildListView(filtered),
           ),
-        Expanded(
-          child: loading
-              ? ListView(
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Text(
+                  'Category: ',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                ),
+                for (final cat in _categories)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(cat),
+                      selected: _selectedCategory == cat,
+                      onSelected: (_) => setState(() => _selectedCategory = cat),
+                      visualDensity: VisualDensity.compact,
+                      labelStyle: TextStyle(
+                        fontSize: 11,
+                        fontWeight: _selectedCategory == cat ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                const Text(
+                  'Status: ',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                ),
+                for (final st in _statuses)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(st),
+                      selected: _selectedStatus == st,
+                      selectedColor: st != 'All' ? statusColor(st).withOpacity(0.2) : null,
+                      onSelected: (_) => setState(() => _selectedStatus = st),
+                      visualDensity: VisualDensity.compact,
+                      labelStyle: TextStyle(
+                        fontSize: 11,
+                        color: _selectedStatus == st && st != 'All' ? statusColor(st) : null,
+                        fontWeight: _selectedStatus == st ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListView(List<Report> list) {
+    return loading
+        ? ListView(
+            padding: const EdgeInsets.all(12),
+            children: List.generate(6, (_) => const ReportCardSkeleton()),
+          )
+        : list.isEmpty
+            ? _EmptyState(myReports: widget.myReports)
+            : RefreshIndicator(
+                onRefresh: load,
+                color: Theme.of(context).colorScheme.primary,
+                child: ListView.builder(
                   padding: const EdgeInsets.all(12),
-                  children: List.generate(6, (_) => const ReportCardSkeleton()),
-                )
-              : reports.isEmpty
-                  ? _EmptyState(myReports: widget.myReports)
-                  : RefreshIndicator(
-                      onRefresh: load,
-                      color: Theme.of(context).colorScheme.primary,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: reports.length,
-                        itemBuilder: (context, i) {
-                          final r = reports[i];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: FadeSlideIn(
-                              index: i,
-                              child: MotionCard(
-                                onTap: () => pushAnimated(
-                                  context,
-                                  ReportDetailScreen(report: r),
-                                ).then((_) => load()),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(14),
-                                  child: Row(
+                  itemCount: list.length,
+                  itemBuilder: (context, i) {
+                    final r = list[i];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: FadeSlideIn(
+                        index: i,
+                        child: MotionCard(
+                          onTap: () => pushAnimated(
+                            context,
+                            ReportDetailScreen(report: r),
+                          ).then((_) => load()),
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 46,
+                                  height: 46,
+                                  decoration: BoxDecoration(
+                                    color: statusColor(r.status).withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                  child: Icon(
+                                    _categoryIcon(r.category),
+                                    color: statusColor(r.status),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Container(
-                                        width: 46,
-                                        height: 46,
-                                        decoration: BoxDecoration(
-                                          color: statusColor(r.status).withOpacity(0.12),
-                                          borderRadius: BorderRadius.circular(13),
-                                        ),
-                                        child: Icon(
-                                          _categoryIcon(r.category),
-                                          color: statusColor(r.status),
-                                        ),
+                                      Text(
+                                        r.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
                                       ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              r.title,
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          if (r.latitude != null && r.longitude != null)
+                                            const Padding(
+                                              padding: EdgeInsets.only(right: 4),
+                                              child: Icon(Icons.pin_drop, size: 13, color: Colors.blueAccent),
+                                            ),
+                                          Expanded(
+                                            child: Text(
+                                              '${r.category} • ${r.location}',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                                             ),
-                                            const SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                if (r.latitude != null && r.longitude != null)
-                                                  const Padding(
-                                                    padding: EdgeInsets.only(right: 4),
-                                                    child: Icon(Icons.pin_drop, size: 13, color: Colors.blueAccent),
-                                                  ),
-                                                Expanded(
-                                                  child: Text(
-                                                    '${r.category} • ${r.location}',
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
-                                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(width: 8),
-                                      StatusChip(label: r.status),
                                     ],
                                   ),
                                 ),
-                              ),
+                                const SizedBox(width: 8),
+                                StatusChip(label: r.status),
+                              ],
                             ),
-                          );
-                        },
+                          ),
+                        ),
                       ),
-                    ),
-        ),
-      ],
-    );
+                    );
+                  },
+                ),
+              );
   }
 
   Widget _buildMapView(List<Report> geoReports) {
@@ -257,7 +359,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
           ],
         ),
 
-        // If no reports have coordinates yet, show helpful overlay badge
+        // If no reports match filter with coordinates
         if (geoReports.isEmpty)
           Positioned(
             top: 16,
@@ -276,7 +378,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'No reports with GPS coordinates yet. File a new report with GPS to see it on the map!',
+                      'No reports match current filters with GPS coordinates.',
                       style: TextStyle(fontSize: 13),
                     ),
                   ),

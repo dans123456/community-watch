@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/auth_service.dart';
 import '../../services/report_service.dart';
 import '../../widgets/motion.dart';
@@ -145,7 +146,73 @@ class _DashboardTab extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
+          FadeSlideIn(
+            index: 1,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFB71C1C), Color(0xFFD32F2F)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFB71C1C).withOpacity(0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.emergency_outlined, color: Colors.white, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'EMERGENCY SOS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                            fontSize: 15,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'One-tap dial for police, fire & ambulance',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFFB71C1C),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      elevation: 0,
+                    ),
+                    onPressed: () => _showEmergencySheet(context),
+                    child: const Text('Call Help', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -156,12 +223,144 @@ class _DashboardTab extends StatelessWidget {
             children: [
               for (var i = 0; i < actions.length; i++)
                 FadeSlideIn(
-                  index: i + 1,
+                  index: i + 2,
                   child: _ActionCard(data: actions[i]),
                 ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showEmergencySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.emergency, color: Color(0xFFD32F2F), size: 28),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Emergency Services',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Tap any service to instantly dial.',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              _EmergencyItem(
+                icon: Icons.local_police_outlined,
+                title: 'Police Emergency',
+                number: '911',
+                color: const Color(0xFF1565C0),
+              ),
+              const SizedBox(height: 8),
+              _EmergencyItem(
+                icon: Icons.medical_services_outlined,
+                title: 'Ambulance & Paramedics',
+                number: '911',
+                color: const Color(0xFF2E7D32),
+              ),
+              const SizedBox(height: 8),
+              _EmergencyItem(
+                icon: Icons.local_fire_department_outlined,
+                title: 'Fire & Rescue Service',
+                number: '911',
+                color: const Color(0xFFE65100),
+              ),
+              const SizedBox(height: 8),
+              _EmergencyItem(
+                icon: Icons.shield_outlined,
+                title: 'Community Patrol Hotline',
+                number: '112',
+                color: const Color(0xFF6A1B9A),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmergencyItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String number;
+  final Color color;
+
+  const _EmergencyItem({
+    required this.icon,
+    required this.title,
+    required this.number,
+    required this.color,
+  });
+
+  Future<void> _dial() async {
+    final uri = Uri.parse('tel:$number');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MotionCard(
+      onTap: _dial,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text(number, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.phone, size: 14, color: color),
+                  const SizedBox(width: 4),
+                  Text('Dial', style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

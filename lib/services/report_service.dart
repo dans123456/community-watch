@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/report.dart';
+import '../models/report_comment.dart';
 
 class ReportService {
   final _client = Supabase.instance.client;
@@ -58,5 +59,36 @@ class ReportService {
 
   Future<void> deleteReport(String id) async {
     await _client.from('reports').delete().eq('id', id);
+  }
+
+  Future<List<ReportComment>> getComments(String reportId) async {
+    final data = await _client
+        .from('report_comments')
+        .select()
+        .eq('report_id', reportId)
+        .order('created_at', ascending: true);
+    return (data as List).map((e) => ReportComment.fromMap(e)).toList();
+  }
+
+  Future<void> addComment(String reportId, String comment) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+
+    final profile = await _client
+        .from('profiles')
+        .select('full_name, role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+    final name = profile?['full_name'] ?? user.email?.split('@').first ?? 'Resident';
+    final isOfficial = profile?['role'] == 'admin';
+
+    await _client.from('report_comments').insert({
+      'report_id': reportId,
+      'user_id': user.id,
+      'user_name': name,
+      'comment': comment.trim(),
+      'is_official': isOfficial,
+    });
   }
 }
